@@ -1,95 +1,78 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+'use client';
+
+import { useEffect, useState } from 'react';
+
+type School = {
+  id: number;
+  name?: string;
+  address?: string;
+  city?: string;
+  image?: string;
+};
 
 export default function Home() {
-  return (
-    <div className={styles.page}>
-      <main className={styles.main}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol>
-          <li>
-            Get started by editing <code>app/page.tsx</code>.
-          </li>
-          <li>Save and see your changes instantly.</li>
-        </ol>
+  const [schools, setSchools] = useState<School[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-        <div className={styles.ctas}>
-          <a
-            className={styles.primary}
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className={styles.logo}
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-            className={styles.secondary}
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className={styles.footer}>
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+  useEffect(() => {
+    let mounted = true;
+    fetch('/api/schools')
+      .then(async (res) => {
+        if (!res.ok) throw new Error(`API error ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (!mounted) return;
+        setSchools(Array.isArray(data) ? data : []);
+      })
+      .catch((err) => {
+        console.error(err);
+        if (mounted) setError('Failed to load schools');
+      })
+      .finally(() => {
+        if (mounted) setLoading(false);
+      });
+
+    return () => { mounted = false; };
+  }, []);
+
+  const normalizeSrc = (raw?: string) => {
+    if (!raw) return '/globe.svg'; // your placeholder in public/
+    // remove leading "public/" if the API saved that by mistake
+    const cleaned = raw.replace(/^public\//, '');
+    return cleaned.startsWith('/') ? cleaned : `/${cleaned}`;
+  };
+
+  if (loading) return <div style={{ padding: 20 }}>Loading...</div>;
+  if (error) return <div style={{ padding: 20, color: 'red' }}>{error}</div>;
+
+  return (
+    <div style={{ padding: 20 }}>
+      <h1>Schools</h1>
+
+      {schools.length === 0 ? (
+        <p>No schools found</p>
+      ) : (
+        <ul style={{ listStyle: 'none', padding: 0 }}>
+          {schools.map((school) => (
+            <li key={school.id} style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 12 }}>
+              <img
+                src={normalizeSrc(school.image)}
+                alt={school.name || 'school image'}
+                width={60}
+                height={45}
+                style={{ objectFit: 'cover', borderRadius: 6 }}
+                onError={(e) => { (e.currentTarget as HTMLImageElement).src = '/globe.svg'; }}
+              />
+              <div>
+                <div style={{ fontWeight: 700 }}>{school.name || '—'}</div>
+                <div style={{ color: '#555' }}>{school.city ? `${school.city}, ` : ''}{school.address || ''}</div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
